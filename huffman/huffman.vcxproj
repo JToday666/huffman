@@ -129,7 +129,6 @@
   <ItemGroup>
     <ClCompile Include="compress.c" />
     <ClCompile Include="hash.c" />
-    <ClCompile Include="huffman.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="decompress.c" />
   </ItemGroup>

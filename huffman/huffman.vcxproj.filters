@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="huffman.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="decompress.c">
       <Filter>源文件</Filter>
     </ClCompile>
