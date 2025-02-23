@@ -127,6 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="common.c" />
     <ClCompile Include="compress.c" />
     <ClCompile Include="hash.c" />
     <ClCompile Include="main.c" />

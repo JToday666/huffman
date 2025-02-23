@@ -4,21 +4,24 @@ int compress(char* file_name);
 int Count(FILE* f, ListNode** list);
 char IfExist(ListNode** list, int num, unsigned char cur);
 void HeapAdjust(ListNode** list, int s, int m);
-char NodeCompare(ListNode* a, ListNode* b);
-ListNode* CreatNode(ListNode* a, ListNode* b);
+int HuffmanCode(HuffmanTree* root);
+void code_txt(ListNode* head, int size);
+void encoding_hfm(char* name, FILE* fp, ListNode* head);
 
 //压缩处理
 //输入：文件名，收发人姓名学号
 //输出：xxx.hfm 编码结果，code.txt 编码表
-//返回状态码：-1 文件打开失败 0 正常结束
+//返回状态码：-1 文件打开失败 0 正常结束 -2 内存分配不足
 int compress(char* file_name)
 {
 	FILE* fp = fopen(file_name, "rb");
 	if (fp == NULL) return -1;
 	ListNode** list = (ListNode**)malloc(sizeof(ListNode*) * 257);		//堆采用顺序表储存
 	if (list == NULL) return -2;
-	int num = Count(fp, list);		//预处理文件
-	
+	int size = Count(fp, list);		//预处理文件
+	int num = list[0]->frequency;
+
+	printf("*****频率表*****\nbyte\tfreq\n");
 	ListNode* min1, * min2;		//最小，次小节点
 	for (int j = num / 2; j > 0; j--)		//初始化，建成小顶堆
 		HeapAdjust(list, j, num);
@@ -50,12 +53,17 @@ int compress(char* file_name)
 		HeapAdjust(list, 1, n);
 	}
 	HuffmanTree* tree = list[1];
-	//p = head->next;
-	//while (p->next) {
-	//	if(!p->left && !p->right)
-	//		printf("%c\t0x%x\t%d\n", p->c, p->c, p->frequency);
-	//	p = p->next;
-	//}
+	tree->code[0] = 0;
+	tree->code[1] = 0;
+	tree->code[2] = 0;
+
+	int WPL = HuffmanCode(tree);		//哈夫曼编码
+	printf("*****编码表*****\nbyte len  code\n");
+	code_txt(head, size);		//输出编码表code.txt
+	printf("WPL: %d\n", WPL);
+	printf("size: %d\n", size);
+	encoding_hfm(strtok(file_name, "."), fp, head);		//压缩，输出xxx.hfm
+	
 
 	//free(list);
 	fclose(fp);
@@ -64,21 +72,23 @@ int compress(char* file_name)
 
 //文件处理，统计不同字节值个数及频度
 //输入：文件指针，节点顺序表，附加信息
-//输出：节点个数
+//输出：文件字节数，通过list[0]->frequency返回节点个数
 int Count(FILE*f, ListNode** list)
 {
+	int size = 0;		//文件字节数
 	int num = 0;	//节点个数
 
 	int cur;
 	while ((cur = fgetc(f)) != EOF)		//按字节读取文件
 	{
+		size++;
 		if (!IfExist(list, num, (unsigned char)cur))		//不存在，新建节点
 		{
 			num++;
 			ListNode* temp = (ListNode*)malloc(sizeof(ListNode));
 			temp->c = (unsigned char)cur;
 			temp->frequency = 1;
-			temp->code = NULL;
+			temp->code = (unsigned char*)malloc(3 * sizeof(unsigned char));
 			temp->len = 0;
 			temp->parent = NULL;
 			temp->left = NULL;
@@ -87,7 +97,11 @@ int Count(FILE*f, ListNode** list)
 			list[num] = temp;		//存入节点顺序表
 		}
 	}
-	return num;
+	ListNode* temp = (ListNode*)malloc(sizeof(ListNode));
+	temp->frequency = num;
+	list[0] = temp;
+	rewind(f);
+	return size;
 }
 
 //重复判断，当前字节值是否存在
@@ -122,32 +136,91 @@ void HeapAdjust(ListNode** list, int s, int m)
 	list[s] = temp;
 }
 
-//比大小，判断节点的先后顺序，频度优先，频度相同字节值更大优先
-//输入：两个节点指针
-//输出：1 a<b 0 a>b
-char NodeCompare(ListNode* a, ListNode* b)
+//哈夫曼编码，确定code与len
+//输入：待编码哈夫曼树根节点
+//输出：WPL值
+int HuffmanCode(HuffmanTree* root)
 {
-	if (a->frequency < b->frequency)		//频度小
-		return 1;
-	else if (a->frequency == b->frequency && a->c < b->c)		//频度相同，字节值小
-		return 1;
+	if (!root->left)		//叶节点
+		return root->frequency * root->len;
 	else
-		return 0;
+	{
+		//左子树
+		root->left->len = root->len + 1;
+		for (char i = 0; i < 3; i++) root->left->code[i] = root->code[i];
+		int Lwpl = HuffmanCode(root->left);
+		//右子树
+		root->right->len = root->len + 1;
+		for (char i = 0; i < 3; i++) root->right->code[i] = root->code[i];
+		char byt = root->len / 8;
+		char loc = root->len % 8 + 1;
+		root->right->code[byt] |= 0x80 >> (loc - 1);
+		int Rwpl = HuffmanCode(root->right);
+		return Lwpl + Rwpl;
+	}
 }
 
-//合并节点，频度为两节点频度之和，字节值为最大的字节值
-//输入：两个节点
-//输出：新节点指针
-ListNode* CreatNode(ListNode* a, ListNode* b)
+//编码表文件
+//输入：节点链表, 原始文件大小
+//输出：code.txt文件
+void code_txt(ListNode* head, int size)
 {
-	ListNode* new = (ListNode*)malloc(sizeof(ListNode));
-	new->c = a->c > b->c ? a->c : b->c;
-	new->frequency = a->frequency + b->frequency;
-	new->code = NULL;
-	new->len = 0;
-	new->parent = NULL;
-	new->left = a;
-	new->right = b;
-	new->next = NULL;
-	return new;
+	FILE* fp = fopen("code.txt", "w");
+	if (fp == NULL) exit(-1);
+
+	fprintf(fp, "%d\n", size);		//总字节数
+	for (ListNode* p = head->next; p; p = p->next)
+	{
+		fprintf(fp, "0x%02x 0x%02x", p->c, p->len);		//字节码 编码长度
+		printf("0x%02x 0x%02x", p->c, p->len);
+		for (char i = 0; i <= (p->len - 1) / 8; i++)
+		{
+			fprintf(fp, " 0x%02x", p->code[i]);		//位编码字节(尾部补0)
+			printf(" 0x%02x", p->code[i]);
+		}
+		fprintf(fp, "\n");
+		printf("\n");
+	}
+	fclose(fp);
+}
+
+//压缩文件
+//输入：原文件名，原文件指针，节点链表
+//输出：xxx.hfm文件
+void encoding_hfm(char* name, FILE* fp, ListNode* head)
+{
+	FILE* f = fopen(strcat(name, ".hfm"), "wb+");
+	int byt = 0;		//压缩后大小
+	char loc = 0;		//当前位
+	unsigned char buf = 0;		//字节编辑
+	int cur;
+	while ((cur = fgetc(fp)) != EOF)
+	{
+		ListNode* p;
+		for (p = head->next; p; p = p->next)
+			if (p->c == (unsigned char)cur) break;		//对应节点
+		for (char i = 0; i < p->len; i++)
+		{
+			if ((p->code[i / 8] << (i % 8)) & 0x80)		//哈夫曼编码该位为1
+				buf |= 0x80 >> loc;
+			loc++;
+			if (loc == 8)		//填满
+			{
+				fputc(buf, f);
+				buf = 0;
+				loc = 0;
+				byt++;
+			}
+		}
+	}
+	if (loc)
+	{
+		fputc(buf, f);
+		byt++;
+	}
+	fseek(f, -16, SEEK_END);
+	printf("last 16 byte:\n");
+	for (int j = 0; j < 16; j++) printf("0x%02x ", (unsigned char)fgetc(f));
+	printf("\n");
+	fclose(f);
 }

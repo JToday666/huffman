@@ -30,11 +30,23 @@ int main() {
 		if (op == 1)
 		{
 			printf("—πÀı\n");
-			compress(file_name);
+			int res = compress(file_name);
+			switch (res)
+			{
+			case 0:
+				printf("finish");
+				break;
+			case -1:
+				printf("file open error");
+				break;
+			default:
+				printf("unnown error");
+				break;
+			}
 		}
 		else
 		{
-			printf("error");
+			printf("Ω‚—πÀı\n");
 		}
 	}
 	return 0;

@@ -26,25 +26,25 @@ void Code(HuffmanTree* root, char* s, int n);
 
 int WPL = 0;   //带权路径长度
 int length = 0; //文本长度
-//int main() {
-//	char name[50];
-//	scanf("%s", name);
-//	FILE* fp = fopen(name, "r");
-//	if (fp == NULL) {
-//		perror("打开文件失败");
-//		return -1;
-//	}
-//
-//	ListNode* head = (ListNode*)malloc(sizeof(ListNode));
-//	Count(head, fp);
-//	Sort(head->next);
-//	CreatHT(head);
-//	HuffmanCode(head);
-//	Print(head->next);
-//
-//	fclose(fp);
-//	return 0;
-//}
+int main() {
+	char name[50];
+	scanf("%s", name);
+	FILE* fp = fopen(name, "r");
+	if (fp == NULL) {
+		perror("打开文件失败");
+		return -1;
+	}
+
+	ListNode* head = (ListNode*)malloc(sizeof(ListNode));
+	Count(head, fp);
+	Sort(head->next);
+	CreatHT(head);
+	HuffmanCode(head);
+	Print(head->next);
+
+	fclose(fp);
+	return 0;
+}
 
 //哈夫曼编码
 void HuffmanCode(ListNode* head) {
