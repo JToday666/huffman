@@ -1,4 +1,5 @@
 #include "common.h"
+#include "hash.h"
 
 int compress(char* file_name);
 int Count(FILE* f, ListNode** list);
@@ -62,8 +63,9 @@ int compress(char* file_name)
 	code_txt(head, size);		//输出编码表code.txt
 	printf("WPL: %d\n", WPL);
 	printf("size: %d\n", size);
+	unsigned long long hash_txt = fnv1a_64(file_name);		//xxx.txt哈希
 	encoding_hfm(strtok(file_name, "."), fp, head);		//压缩，输出xxx.hfm
-	
+	unsigned long long hash_hfm = fnv1a_64(file_name);		//xxx.hfm哈希
 
 	//free(list);
 	fclose(fp);
@@ -168,17 +170,16 @@ void code_txt(ListNode* head, int size)
 	FILE* fp = fopen("code.txt", "w");
 	if (fp == NULL) exit(-1);
 
-	fprintf(fp, "%d\n", size);		//总字节数
+	fprintf(fp, "%d", size);		//总字节数
 	for (ListNode* p = head->next; p; p = p->next)
 	{
-		fprintf(fp, "0x%02x 0x%02x", p->c, p->len);		//字节码 编码长度
+		fprintf(fp, "\n0x%02x 0x%02x", p->c, p->len);		//字节码 编码长度
 		printf("0x%02x 0x%02x", p->c, p->len);
 		for (char i = 0; i <= (p->len - 1) / 8; i++)
 		{
 			fprintf(fp, " 0x%02x", p->code[i]);		//位编码字节(尾部补0)
 			printf(" 0x%02x", p->code[i]);
 		}
-		fprintf(fp, "\n");
 		printf("\n");
 	}
 	fclose(fp);

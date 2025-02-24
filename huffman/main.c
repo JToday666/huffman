@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 extern int compress(char* file_name);
+extern int decompress(char* file_name);
 int main() {
 	int op = 0;
 	char file_name[20];
@@ -47,6 +48,7 @@ int main() {
 		else
 		{
 			printf("Ω‚—πÀı\n");
+			decompress(file_name);
 		}
 	}
 	return 0;
