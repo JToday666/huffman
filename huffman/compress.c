@@ -1,25 +1,25 @@
 #include "common.h"
 #include "hash.h"
 
-int compress(char* file_name);
-int Count(FILE* f, ListNode** list);
+int compress(char* file_name, int encode, char* info);
+int Count(FILE* f, ListNode** list, int encode, char* info);
 char IfExist(ListNode** list, int num, unsigned char cur);
 void HeapAdjust(ListNode** list, int s, int m);
 int HuffmanCode(HuffmanTree* root);
 void code_txt(ListNode* head, int size);
-void encoding_hfm(char* name, FILE* fp, ListNode* head);
+int encoding_hfm(char* name, FILE* fp, ListNode* head, int encode, char* info);
 
 //压缩处理
 //输入：文件名，收发人姓名学号
 //输出：xxx.hfm 编码结果，code.txt 编码表
 //返回状态码：-1 文件打开失败 0 正常结束 -2 内存分配不足
-int compress(char* file_name)
+int compress(char* file_name, int encode, char* info)
 {
 	FILE* fp = fopen(file_name, "rb");
 	if (fp == NULL) return -1;
 	ListNode** list = (ListNode**)malloc(sizeof(ListNode*) * 257);		//堆采用顺序表储存
 	if (list == NULL) return -2;
-	int size = Count(fp, list);		//预处理文件
+	int size = Count(fp, list, encode, info);		//预处理文件
 	int num = list[0]->frequency;
 
 	printf("*****频率表*****\nbyte\tfreq\n");
@@ -64,10 +64,10 @@ int compress(char* file_name)
 	printf("WPL: %d\n", WPL);
 	printf("size: %d\n", size);
 	unsigned long long hash_txt = fnv1a_64(file_name);		//xxx.txt哈希
-	encoding_hfm(strtok(file_name, "."), fp, head);		//压缩，输出xxx.hfm
+	int byte = encoding_hfm(strtok(file_name, "."), fp, head, encode, info);		//压缩，输出xxx.hfm
 	unsigned long long hash_hfm = fnv1a_64(file_name);		//xxx.hfm哈希
+	printf("压缩率：%02d%%\n", 100 * byte / size);		//压缩率
 
-	//free(list);
 	fclose(fp);
 	return 0;
 }
@@ -75,20 +75,46 @@ int compress(char* file_name)
 //文件处理，统计不同字节值个数及频度
 //输入：文件指针，节点顺序表，附加信息
 //输出：文件字节数，通过list[0]->frequency返回节点个数
-int Count(FILE*f, ListNode** list)
+int Count(FILE*f, ListNode** list, int encode, char* info)
 {
 	int size = 0;		//文件字节数
 	int num = 0;	//节点个数
-
-	int cur;
-	while ((cur = fgetc(f)) != EOF)		//按字节读取文件
+	unsigned char offset = 0;
+	if (encode == 1) offset = 0x55;		//偏移值
+	unsigned char cur;
+	if (info != NULL)
 	{
+		for (int i = 0; i < strlen(info); i++)		//收发信息
+		{
+			cur = (unsigned char)info[i] + offset;
+			if (encode == 2) cur = ~cur;
+			size++;
+			if (!IfExist(list, num, cur))		//不存在，新建节点
+			{
+				num++;
+				ListNode* temp = (ListNode*)malloc(sizeof(ListNode));
+				temp->c = cur;
+				temp->frequency = 1;
+				temp->code = (unsigned char*)malloc(3 * sizeof(unsigned char));
+				temp->len = 0;
+				temp->parent = NULL;
+				temp->left = NULL;
+				temp->right = NULL;
+				temp->next = NULL;
+				list[num] = temp;		//存入节点顺序表
+			}
+		}
+	}
+	while ((cur = fgetc(f)) != 0xff)		//按字节读取文件
+	{
+		cur += offset;
+		if (encode == 2) cur = ~cur;
 		size++;
-		if (!IfExist(list, num, (unsigned char)cur))		//不存在，新建节点
+		if (!IfExist(list, num, cur))		//不存在，新建节点
 		{
 			num++;
 			ListNode* temp = (ListNode*)malloc(sizeof(ListNode));
-			temp->c = (unsigned char)cur;
+			temp->c = cur;
 			temp->frequency = 1;
 			temp->code = (unsigned char*)malloc(3 * sizeof(unsigned char));
 			temp->len = 0;
@@ -188,18 +214,46 @@ void code_txt(ListNode* head, int size)
 //压缩文件
 //输入：原文件名，原文件指针，节点链表
 //输出：xxx.hfm文件
-void encoding_hfm(char* name, FILE* fp, ListNode* head)
+int encoding_hfm(char* name, FILE* fp, ListNode* head, int encode, char* info)
 {
 	FILE* f = fopen(strcat(name, ".hfm"), "wb+");
 	int byt = 0;		//压缩后大小
 	char loc = 0;		//当前位
 	unsigned char buf = 0;		//字节编辑
-	int cur;
-	while ((cur = fgetc(fp)) != EOF)
+	unsigned char cur;
+	unsigned char offset = 0;
+	if (encode == 1) offset = 0x55;		//偏移值
+	if (info != NULL)
 	{
+		for (int i = 0; i < strlen(info); i++)		//收发信息
+		{
+			cur = (unsigned char)info[i] + offset;
+			if (encode == 2) cur = ~cur;
+			ListNode* p;
+			for (p = head->next; p; p = p->next)
+				if (p->c == cur) break;		//对应节点
+			for (char i = 0; i < p->len; i++)
+			{
+				if ((p->code[i / 8] << (i % 8)) & 0x80)		//哈夫曼编码该位为1
+					buf |= 0x80 >> loc;
+				loc++;
+				if (loc == 8)		//填满
+				{
+					fputc(buf, f);
+					buf = 0;
+					loc = 0;
+					byt++;
+				}
+			}
+		}
+	}
+	while ((cur = fgetc(fp)) != 0xff)		//文件压缩
+	{
+		cur += offset;
+		if (encode == 2) cur = ~cur;
 		ListNode* p;
 		for (p = head->next; p; p = p->next)
-			if (p->c == (unsigned char)cur) break;		//对应节点
+			if (p->c == cur) break;		//对应节点
 		for (char i = 0; i < p->len; i++)
 		{
 			if ((p->code[i / 8] << (i % 8)) & 0x80)		//哈夫曼编码该位为1
@@ -224,4 +278,6 @@ void encoding_hfm(char* name, FILE* fp, ListNode* head)
 	for (int j = 0; j < 16; j++) printf("0x%02x ", (unsigned char)fgetc(f));
 	printf("\n");
 	fclose(f);
+
+	return byt;
 }

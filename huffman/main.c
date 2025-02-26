@@ -2,16 +2,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <locale.h>
 
-extern int compress(char* file_name);
-extern int decompress(char* file_name);
+//extern void info(char* message);
+extern void inquire_base(char* sender, char* reciever);
+extern int compress(char* file_name, int encode, char* info);
+extern int decompress(char* file_name, int encode, char* sender, char* reciever);
+
 int main() {
 	int op = 0;
 	char file_name[20];
-	//char send_ID[20];
-	//char send_name[20];
-	//char recieve_ID[20];
-	//char recieve_name[20];
+
 	printf("1:压缩\t\t2:解压缩\n");
 	printf("输入操作:");
 	scanf("%d", &op);
@@ -20,18 +22,34 @@ int main() {
 	else {
 		printf("输入文件名:");
 		scanf("%s", file_name);
-		//printf("输入发送人学号:");
-		//scanf("%s", send_ID);
-		//printf("输入发送人姓名:");
-		//scanf("%s", send_name);
-		//printf("输入接收人学号:");
-		//scanf("%s", recieve_ID);
-		//printf("输入接收人姓名:");
-		//scanf("%s", recieve_name);
+		int encode = 0, head = 0;
+		printf("是否加密(0-不加密 1-偏移量 2-位取反):");
+		scanf("%d", &encode);
+		printf("是否增加收发人信息(0/1):");
+		scanf("%d", &head);
+
+		char* message = (char*)malloc(sizeof(char) * 100);
+		char* sender = (char*)malloc(sizeof(char) * 50);
+		char* reciever = (char*)malloc(sizeof(char) * 50);
+		if (head == 1) 
+		{
+			inquire_base(sender, reciever);
+			strcpy(message, sender);
+			strcat(message, "\n");
+			strcat(message, reciever);
+			strcat(message, "\n");
+		}
+		else 
+		{
+			message = NULL;
+			sender = NULL;
+			reciever = NULL;
+		}
+		//printf("%d\n%s\n", encode, message);
 		if (op == 1)
 		{
 			printf("压缩\n");
-			int res = compress(file_name);
+			int res = compress(file_name, encode, message);
 			switch (res)
 			{
 			case 0:
@@ -48,7 +66,7 @@ int main() {
 		else
 		{
 			printf("解压缩\n");
-			decompress(file_name);
+			decompress(file_name, encode, sender, reciever);
 		}
 	}
 	return 0;

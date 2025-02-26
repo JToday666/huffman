@@ -30,6 +30,9 @@
     <ClCompile Include="common.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="information.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h">

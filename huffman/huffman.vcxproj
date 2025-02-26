@@ -130,6 +130,7 @@
     <ClCompile Include="common.c" />
     <ClCompile Include="compress.c" />
     <ClCompile Include="hash.c" />
+    <ClCompile Include="information.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="decompress.c" />
   </ItemGroup>
